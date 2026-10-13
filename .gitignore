@@ -74,3 +74,9 @@ __pycache__/
 
 # Private genealogy data
 tg_context_snapshot.json
+
+# Local source backups
+*.backup-20*
+
+# Private writing library; never publish
+/recallforge-writing-library-100.json

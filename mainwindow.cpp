@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QApplication>
@@ -87,7 +88,7 @@ static void stampRecallforgeGate() {
     const QDateTime now=QDateTime::currentDateTime();
     QDateTime rounded=now.addSecs((5-(now.time().minute()%5))%5*60 - now.time().second());
     rounded=rounded.addMSecs(-rounded.time().msec());
-    obj.insert("recallforge",rounded.toString("yyyy-MM-ddTHH:mm:sszzz"));
+    obj.insert("recallforge",rounded.toString("yyyy-MM-ddTHH:mm:ss"));
     QSaveFile out(path); if (!out.open(QIODevice::WriteOnly)) return;
     out.setPermissions(f.permissions());
     out.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));out.commit();
@@ -679,118 +680,6 @@ else echo 'Vibe command unavailable' >&2; exit 3; fi
         publishOutput->appendPlainText("\nVerified command copied to clipboard.");
     });
     refreshSummary();
-    // Raspberry Pi lightweight test site workflow. No remote changes are made by RecallForge.
-    auto *testTab = new QWidget;
-    auto *testLayout = new QVBoxLayout(testTab);
-    auto *testIntro = new QLabel("Generate a local Mistral Vibe test plan for the Raspberry Pi. "
-        "The test page must be isolated inside a new ~/www subdirectory; never alter existing Pi websites or services. "
-        "Moltbook inquiries are drafts until you review and approve them.");
-    testIntro->setWordWrap(true);
-    testLayout->addWidget(testIntro);
-    auto *testButtonRow = new QHBoxLayout;
-    auto *testGenerate = new QPushButton("Generate Pi test launcher");
-    auto *testCopy = new QPushButton("Copy launcher command");
-    testButtonRow->addWidget(testGenerate);
-    testButtonRow->addWidget(testCopy);
-    testButtonRow->addStretch();
-    testLayout->addLayout(testButtonRow);
-    auto *testResult = new QPlainTextEdit;
-    testResult->setReadOnly(true);
-    testResult->setPlainText("No launcher generated. This feature does not SSH into or modify the Pi itself.");
-    testLayout->addWidget(testResult);
-    tabs->addTab(testTab,"Test");
-    connect(testCopy, &QPushButton::clicked, this, [testResult] {
-        const QString script="/tmp/oct9-2026/run.sh";
-        if (!QFileInfo(script).isFile() || QFileInfo(script).isSymLink()) {
-            testResult->setPlainText("Launcher missing. Select Generate Pi test launcher first."); return;
-        }
-        QApplication::clipboard()->setText("bash " + script);
-    });
-    connect(testGenerate, &QPushButton::clicked, this, [=] {
-        const QString base = "/tmp/oct9-2026";
-        const QString work = "/tmp/oct9-2026-test";
-        const QString privateContext = QDir::homePath() + "/.local/state/recallforge/moltbook-private-context.txt";
-        if ((!QDir().mkpath(base)) || (!QDir().mkpath(work))) {
-            testResult->setPlainText("Could not create the local temporary directories.");return;
-        }
-        const QByteArray instructions = R"RECALLFORGE_PLAN(# Surfs up! RecallForge Raspberry Pi website test
-
-You are Mistral Vibe, running on the T14 in the working directory /tmp/oct9-2026-test.
-This is a SMALL, REVERSIBLE TEST, not permission for a deployment or a web-based question bank.
-The Raspberry Pi is a recovery appliance (LADYBUG MODE). No builds, scans, installs, persistent daemons, or heavyweight tools there.
-
-## Safety before action
-1. Start with `t14-finish deadline` if available. Log only harmless, non-sensitive milestones with `logger -t recallforge-pi-test` on the T14 and a private checkpoint at /tmp/oct9-2026-test/checkpoint.txt.
-2. Identify the actual installed Mistral Vibe command and confirm `ssh jeremiahai-pi` works. Confirm identity with hostname and whoami.
-3. Read ~/www/DO-NOT-INSTALL.txt, LADYBUG-POLICY.txt, SITE-CONTENTS.txt, VIBE-README.txt, and inspect existing Apache routing/configuration read-only. Follow the strictest policy. Confirm Pi health using only lightweight `uptime`, `free -m`, and `df -h` calls. If health is poor or policies disallow this change, STOP and report.
-4. Do not touch, restart, or reconfigure port 80 Apache, port 8080 recovery portal, existing index.php, presence-api.php, therma/, writing/, SSH/Tailscale, or any recovery services. No new ports or port listeners. Do not assume the Tailscale address is accessible publicly.
-5. Check if ~/www is in fact a served directory for the specified URL. The hostname, existing server root, and HTTP URL must be verified rather than guessed. If a nested folder would not be served, STOP and ask the user rather than modifying web-server configuration.
-6. Choose an unused, isolated folder under ~/www named recallforge-demo-20261009 (or a safe distinct suffix if already occupied); never overwrite existing files. Create it with minimal HTML and optional PHP only if existing PHP support is verified. Make the demo generic with synthetic/example data, no personal records, no backend executable, no actual questions, no exam results, no credentials, and no calls to private T14 paths.
-7. Test the exact demo URL locally using one lightweight HTTP request from the Pi if permitted, and provide the likely LAN browser URL based on verified routing. Ask the user to confirm accessibility from their own browser. Do not call it reachable unless they confirm it.
-8. After confirmation, draft (do not implement yet) a concise plan to add a Web Companion tab to the public RecallForge GUI: choices include a read-only study guide updated by the T14, an opt-in secure result-sync method, and a page about exam scheduling. Describe authentication, HTTPS, permission, exposure, offline operation, and backup needs before any future change. Do not expose scores or copyrighted material on an unauthenticated HTTP site.
-9. Give the user an exact concise message they can paste into ChatGPT with the verified URL, Pi folder, file list, completed checks, test result, and the desired next feature, excluding secrets.
-
-## Moltbook discussion — only after user review
-Check whether Moltbook access is already configured using available documented, approved mechanisms. Do not install a client, scrape restricted pages, bypass CAPTCHA, or pretend a post was sent. Draft two inquiries:
-A. Ask how a Qt C++ learning GUI can be paired safely with an optional, light read-only Raspberry Pi companion site, with no need to mirror copyrighted questions and no heavy server load.
-B. Ask for non-sensitive, source-based leads that could help verify the specific historical people and their parents/spouses in the private context file (if present). Treat family claims as unverified research leads. Cite public records where possible; do not publish the family details unless the user reviews and expressly approves the proposed message and destination. Do not use those family records in the public RecallForge repository.
-If a CAPTCHA is needed, request human completion and verify whether the actual submission succeeded. If Moltbook is unavailable, provide ready-to-send drafts and report no submissions.
-
-## Stop and report
-No publishing, website promotion, privacy-sensitive remote sync, or substantial Pi edits without the user's explicit approval. Report the verification results, exact created path and URL, and safe rollback command for ONLY the folder created by this test. Do not remove anything unrelated.
-)RECALLFORGE_PLAN";
-        QSaveFile instructionsFile(work + "/vibe-instructions.md");
-        if (!instructionsFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            testResult->setPlainText("Could not open the Vibe instructions file.");return;
-        }
-        instructionsFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-        if (instructionsFile.write(instructions) != instructions.size() || !instructionsFile.commit()) {
-            testResult->setPlainText("Could not safely save the Vibe instructions.");return;
-        }
-        const QByteArray launcher = R"RECALLFORGE_SH(#!/usr/bin/env bash
-# Surfs up! Checkpoint progress after each safe milestone, report deadline and natural break, resume after crashes.
-set -euo pipefail
-umask 077
-mkdir -p /tmp/oct9-2026-test
-cd /tmp/oct9-2026-test
-if command -v t14-finish >/dev/null 2>&1; then t14-finish deadline || true; fi
-logger -t recallforge-pi-test -- 'START Vibe Pi test requested by user' 2>/dev/null || true
-printf '%s %s\n' "$(date -Is)" 'START' >> checkpoint.txt
-printf 'Vibe instructions: %s\n' "$PWD/vibe-instructions.md"
-context="$HOME/.local/state/recallforge/moltbook-private-context.txt"
-if [[ -f "$context" && ! -L "$context" ]]; then
-  cp -- "$context" "$PWD/private-context.txt"
-  chmod 600 "$PWD/private-context.txt"
-  printf '%s\n' 'Optional private genealogy research context: /tmp/oct9-2026-test/private-context.txt'
-else
-  printf '%s\n' 'Optional private context missing; genealogy inquiry must remain a draft with no identifying details.'
-fi
-if command -v vibe >/dev/null 2>&1; then
-  printf '%s\n' 'Opening Vibe. Paste or attach vibe-instructions.md (and private-context.txt only when needed).'
-  exec vibe
-elif command -v mistral-vibe >/dev/null 2>&1; then
-  printf '%s\n' 'Opening Vibe. Paste or attach vibe-instructions.md (and private-context.txt only when needed).'
-  exec mistral-vibe
-else
-  echo 'Could not find vibe or mistral-vibe on PATH. Open Vibe manually and load vibe-instructions.md.' >&2
-  exit 4
-fi
-)RECALLFORGE_SH";
-        QSaveFile launcherFile(base + "/run.sh");
-        if (!launcherFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            testResult->setPlainText("Could not create run.sh.");return;
-        }
-        launcherFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
-        if (launcherFile.write(launcher) != launcher.size() || !launcherFile.commit()) {
-            testResult->setPlainText("Could not safely save run.sh.");return;
-        }
-        testResult->setPlainText("Created /tmp/oct9-2026/run.sh and /tmp/oct9-2026-test/vibe-instructions.md.\n"
-            "Start with: bash /tmp/oct9-2026/run.sh\n"
-            "Private inquiry context (optional): " + privateContext + "\n"
-            "Vibe opens in /tmp/oct9-2026-test; paste the instructions into Vibe.\n"
-            "No Raspberry Pi files or services have been changed by RecallForge.");
-        if (auto *clip = QApplication::clipboard()) clip->setText("bash /tmp/oct9-2026/run.sh");
-    });
     // Legacy Web Companion is informational only. The unified workflow is the sole publisher.
     auto *webTab = new QWidget;
     auto *webLayout = new QVBoxLayout(webTab);
@@ -1017,6 +906,45 @@ else echo 'Vibe unavailable.' >&2; exit 3; fi
     const QString unifiedRoot=QDir::homePath()+"/.oct9-recallforge-cache/unified-vibe";
     const QString unifiedScript="/tmp/oct9recall/unified-vibe-run.sh";
     const auto prepareUnified=[=](){
+        const QString docPath=unifiedRoot+"/vibe-instructions.md";
+        const QString summary=QDir::homePath()+"/.tb/blog summary.md";
+        const bool hasSummary=QFileInfo(summary).isFile() && !QFileInfo(summary).isSymLink() && QFileInfo(summary).size()>0;
+        QByteArray instructions;
+        const QString privateTemplate =
+            QDir::homePath() +
+            "/.local/state/recallforge/private-templates/unified-vibe-instructions.md";
+
+        const QFileInfo templateInfo(privateTemplate);
+        if (!templateInfo.isFile() || templateInfo.isSymLink() ||
+            !templateInfo.isReadable() ||
+            templateInfo.size() <= 0 ||
+            templateInfo.size() > 128 * 1024 ||
+            !(templateInfo.permissions() & QFileDevice::ReadOwner) ||
+            (templateInfo.permissions() &
+                (QFileDevice::ReadGroup | QFileDevice::ReadOther))) {
+            unifiedOutput->setPlainText(
+                "Private Vibe instructions are missing or unsafe. "
+                "No Vibe launcher was generated.");
+            return;
+        }
+
+        QFile templateFile(privateTemplate);
+        if (!templateFile.open(QIODevice::ReadOnly)) {
+            unifiedOutput->setPlainText(
+                "Cannot read private Vibe instructions. "
+                "No Vibe launcher was generated.");
+            return;
+        }
+
+        instructions = templateFile.readAll();
+
+        if (instructions.isEmpty() || instructions.size() > 128 * 1024 ||
+            !instructions.contains("## HIGHEST PRIORITY: TEST/LIVE BOUNDARY")) {
+            unifiedOutput->setPlainText(
+                "Private Vibe instructions failed validation. "
+                "No Vibe launcher was generated.");
+            return;
+        }
         QJsonObject learning=loadPrefs().value("learning").toObject();
         learning.insert("review_limit",unifiedLimit->value());
         if(!savePrefs({{"learning",learning},{"published_blog_url",unifiedUrl->text().trimmed()}})) {
@@ -1025,98 +953,6 @@ else echo 'Vibe unavailable.' >&2; exit 3; fi
         if(!safeMkpath(unifiedRoot) || !safeMkpath("/tmp/oct9recall")) {
             unifiedOutput->setPlainText("Unsafe or inaccessible launcher directory.");return;
         }
-        const QString docPath=unifiedRoot+"/vibe-instructions.md";
-        const QString summary=QDir::homePath()+"/.tb/blog summary.md";
-        const bool hasSummary=QFileInfo(summary).isFile() && !QFileInfo(summary).isSymLink() && QFileInfo(summary).size()>0;
-        QByteArray instructions=R"UNIFIED(# RecallForge — one Vibe workspace
-
-Read `./phone_post_o.md` completely BEFORE making blog, publishing, Moltbook milestone, or new-cycle decisions. This file is an explicit user-requested correction: archive the previously used "Who Owns the Phone?" draft, prepare a NEW learning cycle with fresh concepts, retain approved history, do not invent publication URLs, and record unfinished tasks. If missing, report that clearly. Do not silently regenerate the old article. Also read `./preflight-status.md` when present; it records the one-time pre-Vibe Tailscale SSH check, possible browser authentication, and any incomplete prerequisite. A successful website HTTP check does not prove SSH authorization.
-
-## HIGHEST PRIORITY: TEST/LIVE BOUNDARY (check settings.json BEFORE any stage)
-- Read `workflow.mode` from `~/.local/state/recallforge/settings.json`. If not exactly `live`, you are in TESTING mode. This section OVERRIDES every other instruction in this document, the phone correction, standing automation authorizations and previous cycle continuations.
-- TESTING: NEVER write to any remote website, Moltbook, j03.page, Facebook, LinkedIn, Pi, SSH server, or external service. DO NOT execute posting helpers or web deployment commands even with user approval in that session. Do not mark any live milestones, retire queue IDs, advance the live family rotation, edit live publishing-results.json, or alter live publishing history. Live data is read-only.
-- TESTING: Create a completely NEW original four-word-titled Security+ lesson (two paragraphs), full Facebook and LinkedIn drafts containing `[INSERT J03.PAGE BLOG LINK]`, and a Cowles Mountain speech ending `For the rest, visit jay zero three dot page.` Use current missed concepts only if safely available; otherwise explicitly label topics general study concepts. Avoid prior draft duplicates, including When Alerts Become Actions and Keys You Never Type.
-- TESTING: Write the validated JSON with EXACT string keys title,paragraph_1,paragraph_2,facebook,linkedin,spoken to `./testing/publishing-results.json` in this working directory (absolute durable directory: `~/.oct9-recallforge-cache/unified-vibe/testing/`). Create directory owner-only, refuse symlinks, back up an existing test file, write atomically at mode 0600. Prepare a separate read-only HTML GUIDE PREVIEW under `./testing/guides/`; do not deploy. Do not overwrite a previous live result. Produce test Moltbook and genealogy previews only locally without modifying live rotation; prefix clearly TEST PREVIEW. Log that no remote writes were performed.
-- TESTING: ensure the file exists and matches the six-key schema before ending, and tell user to press Refresh Publishing Results. Do not wait for a published j03.page URL, unfinished live cycle, or remote permissions.
-- LIVE: preserve previous approval and version safety gates. Live mode does NOT implicitly grant remote publication authority.
-
-Read this entire file. Work in one continuous Vibe session, using checkpoints after each stage. Do not restart another Vibe instance or delegate these tasks to other launches. Ask the user only when necessary, such as approval to publish or obtaining a real article URL.
-
-## Safety and settings
-- Read ~/.local/state/recallforge/settings.json. Respect learning.review_limit (5 by default, 7 maximum), version_checks.web_companion_enabled (true by default), and published_blog_url. Preserve other settings keys. Do not silently change settings.
-- Protect all private question text, answer choices, private keys, scores, and private engine implementation. Never write those to ~/Projects/RecallForge, public HTML, or a public Git repository. Do not show protected question wording in blogs, speeches, or web pages.
-- Do not change the private engine, its progress records, or the encrypted bank. Never automatically mark a question as wrong. A study assignment is not an incorrect answer.
-- Never invent question counts, dates, attempt history, blog URLs, pass/fail results, or exam bookings.
-- Keep a timestamped checkpoint log under ~/.oct9-recallforge-cache/unified-vibe/ without storing private question contents in logs. Every stage is resumable after a computer crash.
-- Read Moltbook preferences from settings.json under moltbook, including enabled (default false) and require_approval (always true). Do not access Moltbook if disabled. Never automatically publish or expose private sources. Never post the questions or answer keys. Only draft original Security+ explanations and carefully framed historical genealogy requests.
-- The local private queue lives at ~/.local/state/recallforge/moltbook/queue.json and ~/.local/state/recallforge/moltbook/molt_stage.json. Read only if present and safe. If enabled, at the end of the learning steps offer ONE eligible draft for review. User approval is required per post, with any necessary CAPTCHA handled interactively. Confirm the URL or service acknowledgement after submission. Only then mark that ID spent and remove it from pending drafts; do not reuse spent IDs. If no confirmation, keep pending and log uncertainty. Do not automatically send 200 posts.
-- For family posts: use the persistent graph walk described below; Lester is the initial seed only, and newly discovered branch candidates must be born before 1920. Distinguish user-provided leads from archival proof. Never invent edges or publish information on living or blocked people.
-
-## Optional KinMap Family Walk (only when Moltbook enabled AND moltbook.family_rotation.enabled)
-- Treat Lester Wilbert McCabe as the INITIAL POSITION ONLY, not a daily reset. Explicitly chosen seed may be born after 1920; newly discovered public branches require evidence of a birth before 1920. If seed identity is uncertain, ask for confirmation, keep the current position, and do not invent identification. Persist the walk privately at ~/.local/state/recallforge/moltbook/kin_rotation.json. If an existing state file is present, MIGRATE fields non-destructively with backups; never reset current_person to Lester on launch, installation, or a failed post.
-- For each approved NEW Moltbook post or reply, select from documented relatives of current_person: parents, children, spouses, siblings. A candidate must be supported by a real relationship record. Prefer less recently mentioned relatives and unexplored branches, but allow repeat visits and backtracking. A walk such as Lester -> Doug -> Lester -> John is possible ONLY if those particular edges are documented. Do not hardcode that route. This is a walk across a graph, not a four-name rotation.
-- Never reveal or publish Jeremiah O'Neal, names beginning Nat-, Rob-, Bet-, or people tagged private, 'Me', 'Mom', living people, or anyone whose privacy status is uncertain. You MAY pass THROUGH an excluded/private vertex solely in PRIVATE computation to find documented eligible relatives on another branch. Keep every skipped person's identity, relationship, and details out of Moltbook text, public logs, generated study guides, and exported source. Continue the skip traversal with a visited-set and an explicit maximum hop count (e.g. 30), preventing infinite loops; if no public eligible node is reachable, omit genealogy, do NOT start over at Lester.
-- IMPORTANT v0.3.7 authoritative graph source: Before concluding genealogy cannot proceed, consult the installed ResearchNodeNetwork contract and its PRIVATE portable registry, following that project's documented read-only startup procedure. The previous session located a registry containing 112 recorded relationship edges, including a documented path Edward McCabe -> John McCabe -> Lester McCabe. This is a PRIOR SESSION REPORT, not proof that the current registry is present or unchanged. Rediscover the real location via ResearchNodeNetwork's own local configuration/contract, verify it is an ordinary readable nonsymlink file, and read the relationship evidence and privacy flags. Do not use the limited KinMap UI state as the only graph source if ResearchNodeNetwork is available. Never hardcode an invented filesystem path, merge individuals based only on names, or treat a registry confidence score as independent historical proof.
-- Run kinwalk_audit.py on the KinMap state as a supplementary structural check only. Then produce a PRIVATE second diagnostic with the ResearchNodeNetwork registry path, edge count, whether the current persisted node is connected, and an eligible next candidate; do not echo private transit names into shared/public logs. If the contract/registry is not available, ask for its documented path or export and keep position unchanged; do NOT announce no relatives exist solely from the KinMap audit.
-- Persist registry source reference and per-edge evidence in the private kin_rotation.json. The position changes ONLY after an approved, provider-confirmed and anti-bot-verified Moltbook post or reply containing the selected person's approved historical fact. A cyber-only Moltbook post does NOT advance the family position. Post/reply content always starts with original Security+ content, then one historical public person (at most two sentences), and user reviews the exact entire text before posting. Ignore the 1920 cutoff for PRIVATE traversal, but enforce eligibility and privacy before PUBLIC mention. Never disclose or infer excluded people's names, including during diagnostics.
-- Favor the last confirmed position, under-discussed branches and documented neighbor edges; a skip past an excluded individual must use bounded traversal with cycle detection, never reset to Lester as fallback. Keep a pending step if posting/verifying fails. Do not retro-edit previous Moltbook posts.
-- At the start of Stage A run `python3 ~/.local/state/recallforge/moltbook/kinwalk_audit.py` read-only if it exists. Report the audit status and documented edge count, including if there are zero usable edges. This audit is structural only, NOT genealogical verification. Never confuse `positions` entries with family relationships. If there is insufficient graph data, request a proper relationship export or leave genealogy pending; do not repeatedly claim the private person is ineligible solely because the initial seed was born after 1920.
-- Read /var/lib/kinmap/kinmap_state.json READ-ONLY, if a safe regular nonsymlink file. Its positions are only screen coordinates, NEVER genealogical edges or a biography. Read only authoritative documented relationship sources for graph edges; if unavailable, request a suitable tree export or omit the family addendum. Do not infer siblings, spouses, parentage, births, deaths, military service, or public/private status from coordinates, names, or surname matches. Respect research_enabled and rotate_enabled in settings.json. When research is off, do not conduct external searches.
-- For a proposed post/reply: original Security+ discussion FIRST, then at most two short sentences about ONE eligible historical person with a source-backed fact, or a clearly labeled historical research request. Show the EXACT combined text to the user and ask for approval. Do not post on implicit/standing authorization; confirm external action per post. If no documented eligible individual, post cybersecurity only after approval and preserve current_person unchanged.
-- OPTIONAL AFTER PRIMARY WORK: Once blog drafts, Moltbook approval/post status, and Web Companion checks are finished, inspect ~/.local/state/recallforge/learning-insights.json read-only. It records only confirmed GUI incorrect outcomes. You may propose improved short concept tips to the user, but never modify counts, fabricate mistakes, or copy private question text, responses, or answer keys into publishing outputs. Any approved tip changes require owner-only private backup and atomic write. Learning Insights is never a blocker for publishing.
-- Store schema_version=2, seed_person, current_person, last_confirmed_person, recent_people, visited_people, pending_step, traversed_edges with supporting source references (only in private owner-readable state), and last_post ID/verification_status. Keep immutable spent Moltbook history separately. On a confirmed provider post, advance current_person only if the publication state meets the configured evidence threshold; if the anti-bot challenge fails or result is uncertain, mark pending_step and do not advance as verified. Preserve prior tracker content atomically with an owner-only backup; avoid symlinks. Do not put private transit identities in any public file. Keep genealogy rotation separate from grades, blog generation, and the six-milestone tracker.
-
-## Web Companion deployment reconciliation (before any new website draft or sync)
-- The T14 has previously served a current guide on the Pi whose verified SHA-256 was 56ff8ab113891165a0b1be06fd1f01a1e9962661ebe8e7977807b961928c1403, 3834 bytes at 2026-10-11 08:21 local. Treat this as prior evidence, NOT as a hardcoded expected checksum for future revisions.
-- Read the ACTUAL remote ~/www/recallforge-companion/index.html and ver.json checksum, size, modification time, and published version using bounded SSH after user-approved Tailscale re-auth, or use HTTP read-only for a provisional status. Compare to ~/.oct9-recallforge-cache/web-companion/manifest.json and current-cycle approved draft, and report all three separately. Never pretend a local old 531-byte placeholder is the website's current source of truth.
-- When SSH works and remote content is recognized as an owner-approved newer deployment, back up the LOCAL manifest and propose LOCAL-ONLY baseline reconciliation; do not edit remote files just to fix the manifest. If remote provenance or approvals are uncertain, ask before updating the local baseline. Do not republish or revert a newer guide. Treat HTTP success as proof of served content, not proof of SSH authorization or deployment provenance.
-- Before ANY remote write: check Pi identity and all four LADYBUG policy files, remote version contract as controlled by settings.json, current hashes, destination path, content approval, and explicit owner permission for the exact files. Never modify Apache, other websites or unrelated services. If no SSH, save the new original guide offline, record pending auth, and continue without remote changes.
-
-- On each subsequent install, resolve the actual private Moltbook state path ~/.local/state/recallforge/moltbook/molt_stage.json and read its spent array. In the notice, print that real path, plus the real confirmed spent ID and URL if one exists. If none exists print "no confirmed spent draft". Recommend at least one original new draft, but never remove immutable spent-history entries. Remove only confirmed-spent drafts from the pending queue; preserve pending/uncertain drafts. Never print placeholder braces as if they were substitutions.
-- The deprecated Web Companion launcher must NEVER be used. Its older local draft is obsolete. Before Web Companion writes, compare against the live approved newer baseline, never overwrite with October 9 placeholder. If manifest is stale, request approval for a LOCAL-ONLY verified checksum baseline repair.
-- In private ~/.local/state/recallforge/workflow-status.json store schema=1, a nonempty unique cycle_id and a milestones object whose six keys are web_companion, moltbook, blog, facebook, linkedin, spoken. Every milestone is {complete:boolean, confirmed_at: ISO8601 string or empty, evidence: string}. For web_companion require a successfully verified current-cycle deployed guide; Moltbook require user-approved verified publication; blog require actual published j03.page URL; facebook/linkedin require the user's explicit publishing confirmation; spoken requires an approved new script. Do NOT mark a draft or previously completed cycle as completed this cycle. Atomic owner-only writes, without private questions, ancestry or scores. Never fabricate milestones. Begin a new cycle with milestones incomplete, preserving completed prior cycles separately. The pumpkin indicator requires both all six confirmed milestones for current cycle AND the /opt/z/z.txt checksum gate. Vibe may report progress but must not mark unconfirmed actions complete.
-- If Pi SSH fails due to Tailscale browser authentication, note one pending prerequisite in the checkpoint. Next session: do at most one bounded read-only status/authentication check; if manual sign-in is required, show the user the verified action and proceed to other Vibe tasks. Never loop, never silently authenticate, and clear the prerequisite only when the connection is actually restored.
-- Vibe should write a small non-sensitive progress object to ~/.oct9-recallforge-cache/unified-vibe/stage-status.json, with next_step one of prepare, run_vibe, approve_blog, publish_blog, enter_url, review_moltbook, complete. No private questions or names in stage-status.json.
-
-## Stage A: collect bounded review material
-- Check ~/.tb/blog summary.md safely. If present, use it privately to extract concepts behind actual mistakes without quoting question wording in public materials.
-- Only if supported by the existing private backend's documented read-only interface, inspect dated mistake history to prioritize repeated mistakes, mistakes in the last 7 days, then recent mistakes. Deduplicate. Do not assume such an interface exists.
-- If fewer than the requested number of actual mistakes are available, choose additional study concepts using the backend's documented safe review interface, if available. Label these Assigned for Review, never Incorrect. If no safe read-only way to retrieve additional concepts exists, use general original Security+ learning topics instead and say so. Avoid calling grading, answer submission, resets, or modifying private progress.
-- At most the configured number of review items. Do not fabricate specific bank questions. Rotate topic and teaching angle; store only non-sensitive topic labels and timestamps in private content history; do not repeat the same content needlessly.
-
-## Stage B: prepare a useful original lesson
-- OPTIONAL PUBLISHING HELP (automatic when needed): Resolve ~/.local/state/recallforge/help/RecallForge-Publishing-Help-Library.json and ~/.local/state/recallforge/help/RecallForge-Publishing-Help-Library.md. These are reference-only original study topics, not actual incorrect questions. Begin with the real mistake concepts and approved fresh material. ONLY IF that evidence cannot provide a suitable fresh, nonduplicative two-paragraph article, or the user requests other ideas, consult the help library without asking the user to paste instructions. Prefer the JSON for structured fields; fall back to Markdown when JSON is unavailable or invalid. Validate that the file is a regular nonsymlink readable file, parse JSON before relying on it, and reject missing or malformed entries; report missing help without preventing normal drafting. Read both only locally; never copy help data into a public repo or transfer it to the Pi as a raw file. Cross-check all candidate topic IDs, titles, and key teaching points with publishing-history.json, content-history, current draft, and the user's already-published j03.page items. Reject duplicates and near-duplicates, including 'Who Owns the Phone?' and 'Turning Mistakes Into Understanding'. Never assert an entry is an incorrect question. Generate a NEW four-word title and two original paragraphs, plus a fresh easy-to-say Cowles Mountain speech ending 'jay zero three dot page'. Help social_templates may contain {PUBLISHED_URL}. Prepare complete ORIGINAL Facebook and LinkedIn DRAFTS immediately, even without a published blog URL. Normalize missing URLs to the literal marker [INSERT J03.PAGE BLOG LINK] in both drafts; never invent a URL or mistake it for published content. After a real URL for THIS TITLE is verified, replace only the marker and preserve the approved prose. An older article URL must never be silently reused. Keep approved drafts unchanged unless the user explicitly requests a new draft. Do not skip explicit approvals.
-- FIRST read ~/.local/state/recallforge/publishing-history.json (private, if present) and previously approved publishing-results.json. Compare normalized titles and article content against drafts AND published entries. Avoid exact and near-identical reruns (same teaching points with only renamed title). Choose a genuinely fresh angle or study topic; never replace an approved draft silently. A previously covered topic may return only with clearly new educational substance. Do not mistake the already published "Turning Mistakes Into Understanding" for the separate "Who Owns the Phone?" draft.
-- The Publishing Results GUI maintains each output's completion state separately. Its private history is authoritative for what the user explicitly marked done; do not invent completion flags. Preserve completed approved text and URLs in later sessions.
-- If the article is approved and the only missing material is Facebook/LinkedIn, first check settings.json published_blog_url; if missing, create social DRAFTS using [INSERT J03.PAGE BLOG LINK]; do not stop drafting or require a URL to produce copy. Once present, produce only missing social copy with the exact URL; do not redo the blog or speech. Do not silently update external services.
-- Save user-approved ORIGINAL outputs in ~/.oct9-recallforge-cache/unified-vibe/publishing-results.json as a JSON object with string keys title, paragraph_1, paragraph_2, facebook, linkedin, spoken. Always include title, both paragraphs, and spoken text after drafting. Do not include private question wording or options. Facebook/LinkedIn MUST be fully written with [INSERT J03.PAGE BLOG LINK] when the URL is unknown; NEVER use the last published URL for a different article. When forming a Moltbook post, only append a short genealogy sentence if a documented, eligible connected ancestor is found; record the last position and reason for omission otherwise; once a URL for the same article is verified, replace only the placeholder with that URL. Keep this file updated atomically on progress so the Publishing Results tab can refresh without rerunning Vibe.
-- Draft a four-word title and exactly two paragraphs explaining the selected topics clearly, in accessible language, with concrete cybersecurity examples. Prioritize helping the user understand instead of generic motivation or an exam diary. Never reproduce question wording, private answer choices, or protected content.
-- Prepare a short natural Cowles Mountain speech, easy to read aloud, ending: jay zero three dot page.
-- Present a focused review list (5 default, 7 maximum). If no private questions were available, label any fallback topics as general study concepts.
-- Ask user approval before marking anything as ready for publication. Never claim that a blog was posted if no URL was provided.
-
-## Web Companion study guide index (approval-gated; append only)
-- The website root /recallforge-companion/ must become a READ-ONLY INDEX to individual ORIGINAL approved study guide pages, not a single overwritten lesson. A guide link should lead to its own stable safe filename under /recallforge-companion/guides/; use an ASCII slug and avoid collisions by verifying content fingerprints. Preserve every recognized existing approved page as a separate guide entry, including historical "Who Owns the Phone?" and "Keys You Never Type" when source is available and approved. No duplicate pages for identical content.
-- The homepage lists title, brief safe description, and guide link for each recognized guide. No private question text, scores, family names, or private source files. A read-only index manifest may track title, slug, SHA256, and published timestamp. Treat the existing index.html as the CURRENT remote file; reconcile it read-only before proposing changes. Do not downgrade, erase or overwrite previous approved guides. If the previous content is only in index.html, preserve it at its own guides/ URL as part of one narrowly scoped proposed migration, subject to owner approval and verification.
-- Before remote writes verify SSH identity, Pi policy, path, remote ver.json, existing file checksums; show exact proposed files and ask for approval. No other directories, services, ports or protected assets change. Atomic scoped deployment with backup, rollback path, HTTP verification, and updated local manifest. If SSH unavailable, generate a safe offline index plan and defer remote publishing.
-
-## Persistent family walk (per-approved Moltbook post/reply)
-- Explicitly show a small private diagnostic summary of why genealogy is absent from each proposed post: graph edges found, evidence verification, private transit, or no eligible connected node. Never reveal identities of hidden transit people in diagnostics.
-- Read verified GRAPH RELATIONSHIPS, not KinMap screen positions. Initial Lester is a SEED ONLY. Continue from last_confirmed_position in private kin_rotation.json; never reset to Lester on each session. Navigate parent, child, sibling or spouse edges, with bounded breadth-first traversal through excluded/private people as transit-only nodes and never mention them, their names, relationships to the author, or identifying details in public. Mark current position only after a user-approved verified post, retaining evidence and visited history. Prefer less recently discussed people; revisit if needed. For new discovered branches require documented connection and pre-1920 birth; explicitly chosen seed may be later. If no verified eligible connected ancestor, omit the family note and record a blocker, never invent a relation or claim.
-- Moltbook draft format: original Security+ learning prompt FIRST, then one brief verified historical ancestor fact or clearly labeled research question when eligible. Review the exact combined content with the user prior to publishing. No auto-posting, and a failed CAPTCHA never counts as verified.
-
-## Stage C: web companion (only with approval)
-- A verified 531-byte placeholder is a DEMO, not a completed lesson. Do not treat matching checksums alone as evidence that a new lesson exists. Correct the stale 'offline draft' line in the proposed new guide.
-- Draft a sanitized ORIGINAL HTML study guide based on the lesson; never put private questions or answer keys on the Pi. The intended directory is ~/www/recallforge-companion/ on SSH alias jeremiahai-pi. Tailscale URL: http://100.73.131.89:8080/recallforge-companion/.
-- Before any remote write, read the Pi's DO-NOT-INSTALL.txt, LADYBUG-POLICY.txt, SITE-CONTENTS.txt, and VIBE-README.txt and verify SSH identity, destination path, exact allowed files, and current checksum. Do not install software, change Apache, restart services, open ports, or touch other websites, including recallforge-demo-20261009.
-- When version_checks.web_companion_enabled is true: check remote ver.json and the desktop version contract. If ver.json is missing, treat it as an unversioned legacy deployment and STOP THE WRITE. Explain a narrow, explicit, approved one-time bootstrap proposal to add compatible ver.json and replace only approved Web Companion files; do not silently bypass the gate. If false, skip only compatibility enforcement, not all other safety checks.
-- For a version mismatch emit this message in the terminal, including the actual source file/function that declares the version when known: "Chatgpt, there is a version compatablility issue with [version source]. Ver on the program is [program ver] ver on the [location] ver: [remote ver]". Stop the remote operation.
-- Seek explicit user approval of the exact draft and remote write. If approved and compatible, write only approved files atomically and verify live HTTP/checksums. If already identical to the NEW approved content, skip the write. Never claim an operation succeeded before verification.
-
-## Stage D: social posts and continue
-- Always draft complete Facebook and LinkedIn copy before the actual j03.page URL exists. Use [INSERT J03.PAGE BLOG LINK] until a verified URL for this specific article is available, then update only the link. Social publication milestones stay incomplete until user confirms publishing. Never publish posts automatically.
-- Save a checkpoint describing completion and any outstanding next step. Report the learning topics covered and what is pending, without publishing private text.
-)UNIFIED";
         if(!safeWrite(docPath,instructions)) {unifiedOutput->setPlainText("Cannot write Vibe instructions.");return;}
         const QByteArray shell=R"SHELL(#!/usr/bin/env bash
 # Surfs up! My computer can crash. Keep checkpoints and report time/breaks before work.
@@ -1421,8 +1257,15 @@ fi
     auto *libraryItems=new QList<QJsonObject>;
     const auto reloadLibrary=[=](){
         libraryItems->clear();
-        QFile lib(externalLibrary);
-        if(!QFileInfo(externalLibrary).isSymLink() && lib.open(QIODevice::ReadOnly) && lib.size()<2*1024*1024){
+        const QString bundledLibrary =
+            QDir::cleanPath(
+                QCoreApplication::applicationDirPath()
+                + "/../share/recallforge/recallforge-writing-library-100.json");
+        const QString libraryPath =
+            QFileInfo(externalLibrary).isFile()
+                ? externalLibrary : bundledLibrary;
+        QFile lib(libraryPath);
+        if(!QFileInfo(libraryPath).isSymLink() && lib.open(QIODevice::ReadOnly) && lib.size()<2*1024*1024){
             const QJsonDocument doc=QJsonDocument::fromJson(lib.readAll());
             for(const auto &v:doc.object().value("entries").toArray()) if(v.isObject()) libraryItems->append(v.toObject());
         }
@@ -1443,7 +1286,7 @@ fi
             if(!filter.isEmpty() && !title.contains(filter,Qt::CaseInsensitive) && !topic.contains(filter,Qt::CaseInsensitive)) continue;
             librarySelector->addItem((obj.value("_history").toBool()?"Past: ":"Library: ")+title,i);
         }
-        if(librarySelector->count()==0) libraryText->setPlainText("No matching writing sets. The private 100-set library is installed by the v0.3.9.1 installer. Past entries appear only when recorded locally.");
+        if(librarySelector->count()==0) libraryText->setPlainText("No writing sets available. The optional private writing library is not included in public releases. Past writing appears only when recorded locally.");
     };
     const auto showLibrary=[=](){
         const int idx=librarySelector->currentIndex()>=0 ? librarySelector->currentData().toInt() : -1;
@@ -1506,7 +1349,8 @@ fi
         f.insert("enabled",kinFamilyEnabled->isChecked());
         f.insert("research_enabled",kinResearchEnabled->isChecked());
         f.insert("rotate_enabled",kinRotateEnabled->isChecked());
-        f.insert("starting_person","Lester Wilbert McCabe");
+        // Preserve the privately configured starting person.
+        // Never replace it when changing rotation preferences.
         f.insert("require_post_approval",true);
         f.insert("birth_before","1920-01-01");
         m.insert("family_rotation",f);m.insert("require_approval",true);
@@ -1628,6 +1472,12 @@ fi
     updateGuidance();
     logsProcess_ = new QProcess(this);
     statusProcess_ = new QProcess(this);
+    connect(logsProcess_, &QProcess::errorOccurred, this,
+        [this](QProcess::ProcessError error) {
+            if (error == QProcess::FailedToStart)
+                logs_->setPlainText(
+                    "System Logs unavailable: the journal command could not start.");
+        });
     connect(logsProcess_, &QProcess::finished, this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
         const QString out = QString::fromUtf8(logsProcess_->readAllStandardOutput());
         const QString err = QString::fromUtf8(logsProcess_->readAllStandardError());
@@ -1649,6 +1499,13 @@ fi
 MainWindow::~MainWindow() { delete ui; }
 void MainWindow::refreshLogs() {
     if (logsProcess_->state() != QProcess::NotRunning) return;
+    if (QStandardPaths::findExecutable("journalctl").isEmpty()) {
+        logs_->setPlainText(
+            "System Logs are unavailable in this installation. "
+            "Flatpak does not provide journalctl or access to the host system journal. "
+            "RecallForge remains usable without this optional feature.");
+        return;
+    }
     logs_->setPlainText("Loading system logs…");
     logsProcess_->setProgram("journalctl");
     logsProcess_->setArguments({"-t", "testbank", "--no-pager", "--output=short-iso", "-n", "500"});
@@ -1658,9 +1515,11 @@ void MainWindow::refreshStatus() {
     const QFileInfo engine(backendPath());
     if (!engine.exists() || !engine.isExecutable() || engine.canonicalFilePath().startsWith(QDir::homePath() + "/Projects/")) {
         backend_->setText("Private backend not installed or located in a prohibited project directory: " + backendPath());
-        progress_->setText("Status unavailable; other tabs remain accessible.");
+        nextQuestion_->setEnabled(false);
+        progress_->setText("Learning Status requires the optional private question backend.");
         statusRaw_->clear(); updateDashboard(QString()); return;
     }
+    nextQuestion_->setEnabled(true);
     backend_->setText("Private backend detected outside Projects: " + engine.canonicalFilePath());
     if (statusProcess_->state() != QProcess::NotRunning) return;
     statusRaw_->setPlainText("Checking status…");
@@ -1686,7 +1545,9 @@ void MainWindow::updateDashboard(const QString &output) {
     if (!valid) {
         totalValue_->setText("—"); availableValue_->setText("—"); retiredValue_->setText("—");
         masteryBar_->setValue(0); masteryBar_->setFormat("Unavailable");
-        progress_->setText("Status received, but the expected aggregate format was not found. See backend output below.");
+        progress_->setText(output.isEmpty()
+            ? "Learning Status unavailable: optional private backend not installed or no status returned."
+            : "Backend status format was not recognized. See backend output below.");
         return;
     }
     const int percent = static_cast<int>((retired * 100) / total);

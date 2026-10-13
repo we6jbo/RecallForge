@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=RecallForge
+Comment=Private Security+ learning and study workflow
+Exec=RecallForge
+Icon=org.oneal.RecallForge
+Terminal=false
+Categories=Education;
+Keywords=Cybersecurity;Security;Study;Learning;
+StartupNotify=true

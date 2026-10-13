@@ -8,3 +8,12 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_add_executable(RecallForge main.cpp mainwindow.cpp mainwindow.h mainwindow.ui)
 target_link_libraries(RecallForge PRIVATE Qt6::Widgets)
 install(TARGETS RecallForge RUNTIME DESTINATION bin)
+
+install(FILES org.oneal.RecallForge.desktop
+        DESTINATION share/applications)
+
+install(FILES org.oneal.RecallForge.metainfo.xml
+        DESTINATION share/metainfo)
+
+install(FILES org.oneal.RecallForge.svg
+        DESTINATION share/icons/hicolor/scalable/apps)
